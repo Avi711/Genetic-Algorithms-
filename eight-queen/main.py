@@ -1,17 +1,12 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import random
 import time
 
+N_QUEENS = 8
+MAX_SCORE = 28  # Max pairs of queens not attacking each other
 
-# Parameters
-population_size = 100
-crossover_rate = 0.8
-mutation_rate = 0.01
-generations = 100
-
-# Fitness Function
 def fitness(chromosome):
-    # Counts the non-attacking pairs of queens
     non_attacking = 0
     for i in range(len(chromosome)):
         for j in range(i+1, len(chromosome)):
@@ -19,90 +14,110 @@ def fitness(chromosome):
                 non_attacking += 1
     return non_attacking
 
-# Selection Function: Tournament Selection
-def selection(population):
-    tournament_size = 5
-    selected = random.sample(population, tournament_size)
-    selected = sorted(selected, key=lambda x: fitness(x), reverse=True)
-    return selected[0]
+def random_chromosome(size):
+    return [random.randint(1, size) for _ in range(size)]
 
-# Crossover Function: One-Point Crossover
-def crossover(parent1, parent2):
+def tournament_selection(population, scores, k=3):
+    selection_ix = np.random.randint(len(population))
+    for ix in np.random.randint(0, len(population), k-1):
+        if scores[ix] > scores[selection_ix]:
+            selection_ix = ix
+    return population[selection_ix]
+
+def crossover(p1, p2, crossover_rate=0.9):
     if random.random() < crossover_rate:
-        point = random.randint(1, len(parent1)-1)
-        child1 = parent1[:point] + parent2[point:]
-        child2 = parent2[:point] + parent1[point:]
-        return [child1, child2]
-    else:
-        return [parent1, parent2]
+        point = random.randint(1, N_QUEENS-2)
+        return p1[:point] + p2[point:], p2[:point] + p1[point:]
+    return p1, p2
 
-# Mutation Function
-def mutate(chromosome):
+def mutation(chromosome, mutation_rate=0.1):
     if random.random() < mutation_rate:
-        index = random.randint(0, len(chromosome)-1)
-        chromosome[index] = random.randint(0, len(chromosome)-1)
+        idx = random.randint(0, N_QUEENS-1)
+        chromosome[idx] = random.randint(1, N_QUEENS)
     return chromosome
 
-# Generate Initial Population
-def generate_population(size):
-    return [random.sample(range(8), 8) for _ in range(size)]
+def genetic_algorithm(n_generations=100000, population_size=100, crossover_rate=0.9, mutation_rate=0.01, elitism=True):
+    population = [random_chromosome(N_QUEENS) for _ in range(population_size)]
+    best_score_progress = []  # Track the best score
+    avg_score_progress = []  # Track the average score
 
-# Genetic Algorithm
-def genetic_algorithm():
-    population = generate_population(population_size)
-    best_solution = None
-    best_fitness = 0
-    
-    for generation in range(generations):
-        new_population = []
-        for _ in range(int(len(population)/2)):
-            parent1 = selection(population)
-            parent2 = selection(population)
-            child1, child2 = crossover(parent1, parent2)
-            child1 = mutate(child1)
-            child2 = mutate(child2)
-            new_population.extend([child1, child2])
+    best_individual = None
+    best_individual_score = 0
+
+    for generation in range(n_generations):
+        scores = [fitness(chromo) for chromo in population]
+        current_best_score = max(scores)
+        avg_score = sum(scores) / population_size
+        best_score_progress.append(current_best_score)
+        avg_score_progress.append(avg_score)
+
+        if best_individual is None or current_best_score > best_individual_score:
+            best_individual = population[scores.index(current_best_score)]
+            best_individual_score = current_best_score
+
+        if current_best_score == MAX_SCORE: break  # Stop if we find a perfect solution
+
+        selected = [tournament_selection(population, scores) for _ in range(population_size)]
+        new_population = list()
+        for i in range(0, population_size, 2):
+            p1, p2 = selected[i], selected[i+1]
+            offspring1, offspring2 = crossover(p1, p2, crossover_rate)
+            new_population.append(mutation(offspring1, mutation_rate))
+            if len(new_population) < population_size:
+                new_population.append(mutation(offspring2, mutation_rate))
+                
+        if elitism:
+            worst_index = scores.index(min(scores))
+            new_population[worst_index] = best_individual
         
-        # Evaluate
         population = new_population
-        current_best = max(population, key=lambda x: fitness(x))
-        current_best_fitness = fitness(current_best)
-        if current_best_fitness > best_fitness:
-            best_fitness = current_best_fitness
-            best_solution = current_best
-        
-        print(f"Generation {generation}: Best Fitness = {best_fitness}")
-        
-        # Stop if solution is found
-        if best_fitness == 28:
-            break
     
-    return best_solution, best_fitness
+    return best_score_progress, avg_score_progress, best_individual
 
-# Random Search for Comparison
-def random_search(tries=10000):
+
+def random_search(n_attempts=10000):
     best_solution = None
-    best_fitness = 0
-    for _ in range(tries):
-        solution = random.sample(range(8), 8)
-        current_fitness = fitness(solution)
-        if current_fitness > best_fitness:
-            best_fitness = current_fitness
-            best_solution = solution
-        if best_fitness == 28:
-            break
-    return best_solution, best_fitness
+    best_score = 0
+    
+    for attempt in range(n_attempts):
+        chromosome = random_chromosome(N_QUEENS)
+        score = fitness(chromosome)
+        if score > best_score:
+            best_score = score
+            best_solution = chromosome
+        if best_score == MAX_SCORE: break
+    
+    return best_score, best_solution
 
-# Run Genetic Algorithm
-start_GA = time.time()
-ga_solution, ga_fitness = genetic_algorithm()
-end_GA = time.time()
-print("time for GA: ", end_GA-start_GA)
-print(f"GA Solution: {ga_solution} with fitness {ga_fitness}")
+time_GA_Start = 0
+time_GA_End = 0
+time_R_Start = 0
+time_R_End = 0
 
-# Run Random Search
-start_R = time.time()
-rs_solution, rs_fitness = random_search()
-end_R = time.time()
-print("time for RANDOM: ", end_R-start_R)
-print(f"Random Search Solution: {rs_solution} with fitness {rs_fitness}")
+time_GA_Start = time.time()
+ga_best_score_progress, ga_avg_score_progress, ga_best_solution = genetic_algorithm(n_generations=100, population_size=100)
+time_GA_End = time.time()
+
+time_R_Start = time.time()
+random_best_score, random_best_solution = random_search()
+time_R_End = time.time()
+
+print(ga_best_solution)
+
+print("Time for Random: ", time_R_End - time_R_Start, "Best fitness: ", fitness(random_best_solution))
+print("Time for GA: ", time_GA_End - time_GA_Start, "GA Best fitness: ", fitness(ga_best_solution))
+
+plt.figure(figsize=(12, 6))
+
+# Best Score Progress
+plt.plot(ga_best_score_progress, label='Best Score')
+
+# Average Score Progress
+plt.plot(ga_avg_score_progress, label='Average Score', linestyle='--')
+
+plt.title('Learning Curve: Genetic Algorithm for Eight Queens Puzzle')
+plt.xlabel('Generation')
+plt.ylabel('Score')
+plt.legend()
+plt.grid(True)
+plt.show()
