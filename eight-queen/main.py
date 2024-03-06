@@ -14,8 +14,8 @@ def fitness(chromosome):
                 non_attacking += 1
     return non_attacking
 
-def random_chromosome(size):
-    return [random.randint(1, size) for _ in range(size)]
+def random_chromosome():
+    return [random.randint(0, N_QUEENS - 1) for _ in range(N_QUEENS)]
 
 def tournament_selection(population, scores, k=3):
     selection_ix = np.random.randint(len(population))
@@ -26,18 +26,18 @@ def tournament_selection(population, scores, k=3):
 
 def crossover(p1, p2, crossover_rate=0.9):
     if random.random() < crossover_rate:
-        point = random.randint(1, N_QUEENS-2)
+        point = random.randint(1, N_QUEENS-1)
         return p1[:point] + p2[point:], p2[:point] + p1[point:]
     return p1, p2
 
 def mutation(chromosome, mutation_rate=0.1):
     if random.random() < mutation_rate:
         idx = random.randint(0, N_QUEENS-1)
-        chromosome[idx] = random.randint(1, N_QUEENS)
+        chromosome[idx] = random.randint(0, N_QUEENS - 1)
     return chromosome
 
 def genetic_algorithm(n_generations=100000, population_size=100, crossover_rate=0.9, mutation_rate=0.01, elitism=True):
-    population = [random_chromosome(N_QUEENS) for _ in range(population_size)]
+    population = [random_chromosome() for _ in range(population_size)]
     best_score_progress = []  # Track the best score
     avg_score_progress = []  # Track the average score
 
@@ -75,12 +75,12 @@ def genetic_algorithm(n_generations=100000, population_size=100, crossover_rate=
     return best_score_progress, avg_score_progress, best_individual
 
 
-def random_search(n_attempts=10000):
+def random_search():
     best_solution = None
     best_score = 0
     
-    for attempt in range(n_attempts):
-        chromosome = random_chromosome(N_QUEENS)
+    while True:
+        chromosome = random_chromosome()
         score = fitness(chromosome)
         if score > best_score:
             best_score = score
@@ -89,13 +89,14 @@ def random_search(n_attempts=10000):
     
     return best_score, best_solution
 
+
 time_GA_Start = 0
 time_GA_End = 0
 time_R_Start = 0
 time_R_End = 0
 
 time_GA_Start = time.time()
-ga_best_score_progress, ga_avg_score_progress, ga_best_solution = genetic_algorithm(n_generations=100, population_size=100)
+ga_best_score_progress, ga_avg_score_progress, ga_best_solution = genetic_algorithm(n_generations=1000, population_size=100)
 time_GA_End = time.time()
 
 time_R_Start = time.time()
