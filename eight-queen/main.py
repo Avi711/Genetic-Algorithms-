@@ -72,7 +72,8 @@ def genetic_algorithm(n_generations=100000, population_size=100, crossover_rate=
         
         population = new_population
     
-    return best_score_progress, avg_score_progress, best_individual
+    best_individual = population[scores.index(current_best_score)]
+    return best_score_progress, avg_score_progress, best_individual, population
 
 
 def random_search():
@@ -96,7 +97,7 @@ time_R_Start = 0
 time_R_End = 0
 
 time_GA_Start = time.time()
-ga_best_score_progress, ga_avg_score_progress, ga_best_solution = genetic_algorithm(n_generations=1000, population_size=100)
+ga_best_score_progress, ga_avg_score_progress, ga_best_solution, population = genetic_algorithm(n_generations=1000, population_size=100)
 time_GA_End = time.time()
 
 time_R_Start = time.time()
@@ -107,6 +108,7 @@ print(ga_best_solution)
 
 print("Time for Random: ", time_R_End - time_R_Start, "Best fitness: ", fitness(random_best_solution))
 print("Time for GA: ", time_GA_End - time_GA_Start, "GA Best fitness: ", fitness(ga_best_solution))
+
 
 plt.figure(figsize=(12, 6))
 
